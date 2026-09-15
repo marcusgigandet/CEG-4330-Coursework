@@ -29,7 +29,7 @@ namespace
 		constexpr uint8_t LED{2};
 		constexpr uint8_t BUTTON{12};
 		constexpr uint8_t SPEAKER{18};
-	
+
 		constexpr uint8_t ROW[ROWS]{13, 14, 27, 26};
 		constexpr uint8_t COL[COLS]{25, 33, 32, 4};
 	} // namespace Pins
@@ -114,7 +114,7 @@ void setup()
  */
 void handleButtonPress()
 {
-	const uint8_t  rawButtonState{digitalRead(Pins::BUTTON)};
+	const uint8_t  rawButtonState{static_cast<uint8_t>(digitalRead(Pins::BUTTON))};
 	const uint32_t currentTime{millis()};
 
 	// The raw input changed, start the debounce period
@@ -158,7 +158,7 @@ void handleButtonPress()
  *
  * @return Mapped key value.
  */
-char getKeypadPress()
+uint8_t getKeypadPress()
 {
 	for (size_t c{}; c < COLS; ++c)
 	{
@@ -184,18 +184,18 @@ char getKeypadPress()
 	}
 
 	// Base case where no keys are pressed
-	return NULL;
+	return 0;
 }
 
 /**
- * @brief Takes in a key and plays a tone using the key in the calculated frequency.
- * @param key Value to use in the calculation.
+ * @brief Takes in a value, n, and plays a tone using the key in the calculated frequency.
+ * @param n Value to use in the calculation.
  *
  * @note Does nothing for a frequency of 0.
  */
-void handleTone(char key)
+void handleTone(uint8_t n)
 {
-	const uint32_t frequency{440 * static_cast<uint32_t>(pow(2, ((key - 49)) / 12.0))};
+	const uint32_t frequency{440 * static_cast<uint32_t>(pow(2, ((n - 49)) / 12.0))};
 
 	// Ignore invalid frequencies
 	if (0 < frequency)
@@ -208,6 +208,6 @@ void loop()
 {
 	handleButtonPress();
 
-	char key = getKeypadPress();
-	handleTone(key);
+	uint8_t n{getKeypadPress()};
+	handleTone(n);
 }
