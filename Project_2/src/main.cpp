@@ -4,57 +4,61 @@
 
 namespace
 {
-	constexpr uint32_t BAUD_RATE{9600};
-
-	constexpr uint8_t LED_PIN{2};
-	constexpr uint8_t BUTTON_PIN{12};
-	constexpr uint8_t SPEAKER_PIN{18};
-
-	constexpr uint16_t DEBOUNCE_DELAY_MS{50};
-	constexpr uint16_t TONE_DURATION_MS{100};
-
 	constexpr uint8_t ROWS{4};
 	constexpr uint8_t COLS{4};
-	constexpr uint8_t rowPins[ROWS]{13, 14, 27, 26};
-	constexpr uint8_t colPins[COLS]{25, 33, 32, 4};
+
+	namespace Pins
+	{
+		constexpr uint8_t LED{2};
+		constexpr uint8_t BUTTON{12};
+		constexpr uint8_t SPEAKER{18};
+	
+		constexpr uint8_t ROW[ROWS]{13, 14, 27, 26};
+		constexpr uint8_t COL[COLS]{25, 33, 32, 4};
+	} // namespace Pins
+
+	constexpr uint32_t BAUD_RATE{9600};
+
+	constexpr uint16_t DEBOUNCE_DELAY_MS{10};
+	constexpr uint16_t TONE_DURATION_MS{100};
+
+	uint32_t octave{};
 
 	constexpr char keypad[ROWS][COLS]{
 		{'1', '2', '3', 'A'},
 		{'4', '5', '6', 'B'},
 		{'7', '8', '9', 'C'},
-		{'*', '0', '#', 'D'}};
-
-	constexpr uint8_t N_TABLE[ROWS][COLS]{
-		40,
-		41,
-		42,
-		0,
-		43,
-		44,
-		45,
-		0,
-		46,
-		47,
-		48,
-		0,
-		49,
-		50,
-		51,
-		0,
+		{'*', '0', '#', 'D'},
 	};
 
-	struct DebounceData
+	// clang-format off
+	constexpr uint8_t N_TABLE[ROWS][COLS]{
+		40, 41, 42, 0,
+		43, 44, 45, 0,
+		46, 47, 48, 0,
+		49, 50, 51, 0,
+	};
+	// clang-format on
+
+	struct ButtonData
 	{
-		uint8_t lastRawState{LOW};
+		/// Raw, current state of the button
+		uint8_t rawState{LOW};
+
+		/// Debounced state of the button press
 		uint8_t debouncedState{LOW};
 
-		uint32_t startTime{};
-		uint32_t lastReleaseTime{};
+		/// Start time of the debouncing
+		uint32_t debounceStartTime{};
 
+		/// Start time of the actual button press
+		uint32_t pressStartTime{};
+
+		/// Count of intentional button presses
 		uint32_t pressCount{};
 	};
 
-	DebounceData debounceData{};
+	ButtonData buttonData{};
 } // namespace
 
 void setup()
@@ -62,109 +66,131 @@ void setup()
 	Serial.begin(BAUD_RATE);
 	Serial.println("Starting program...");
 
-	pinMode(SPEAKER_PIN, OUTPUT);
-	pinMode(LED_PIN, OUTPUT);
-	digitalWrite(LED_PIN, HIGH);
+	// Set LED to on
+	pinMode(Pins::LED, OUTPUT);
+	digitalWrite(Pins::LED, HIGH);
 
-	pinMode(BUTTON_PIN, INPUT_PULLDOWN);
+	// Configure speaker to output
+	pinMode(Pins::SPEAKER, OUTPUT);
 
+	// Configure standalone button pin
+	pinMode(Pins::BUTTON, INPUT_PULLDOWN);
+
+	// Configure keypad matrix inputs
 	for (uint32_t row{}; row < ROWS; ++row)
 	{
-		pinMode(rowPins[row], INPUT_PULLDOWN);
+		pinMode(Pins::ROW[row], INPUT_PULLUP);
 	}
 
+	// Configure keypad matrix outputs
 	for (uint32_t col{}; col < COLS; ++col)
 	{
-		pinMode(colPins[col], OUTPUT);
-		digitalWrite(colPins[col], HIGH);
+		pinMode(Pins::COL[col], OUTPUT);
+		digitalWrite(Pins::COL[col], LOW);
 	}
-
-	// Initialize the base states
-	debounceData.lastRawState	= digitalRead(BUTTON_PIN);
-	debounceData.debouncedState = debounceData.lastRawState;
 }
 
+/**
+ * @brief Handles the button presses for the standalone button.
+ *
+ * This handles any debouncing before confirming the button press.
+ */
 void handleButtonPress()
 {
-	const uint8_t  rawButtonState{digitalRead(BUTTON_PIN)};
+	const uint8_t  rawButtonState{digitalRead(Pins::BUTTON)};
 	const uint32_t currentTime{millis()};
 
-	// Raw input changed, so restart debounce timer.
-	if (rawButtonState != debounceData.lastRawState)
+	// The raw input changed, start the debounce period
+	if (rawButtonState != buttonData.rawState)
 	{
-		debounceData.lastRawState = rawButtonState;
+		buttonData.rawState			 = rawButtonState;
+		buttonData.debounceStartTime = currentTime;
 	}
 
-	// Check for valid duration
-	if ((currentTime - debounceData.startTime) >= DEBOUNCE_DELAY_MS)
+	// Check for valid duration to prevent erroneous button presses
+	// Also check that the state has changed to prevent recording multiple presses
+	if (((currentTime - buttonData.debounceStartTime) >= DEBOUNCE_DELAY_MS) &&
+		(buttonData.rawState != buttonData.debouncedState))
 	{
-		// Only process it if the stable state differs from
-		// our current debounced state.
-		if (rawButtonState != debounceData.debouncedState)
+		// Update the state of the debounced press
+		buttonData.debouncedState = buttonData.rawState;
+
+		// Rising edge: button pressed.
+		if (rawButtonState == HIGH)
 		{
-			debounceData.debouncedState = rawButtonState;
+			buttonData.pressStartTime = currentTime;
+			++buttonData.pressCount;
+			++octave;
+		}
 
-			// Rising edge: button pressed.
-			if (rawButtonState == HIGH)
-			{
-				debounceData.startTime = currentTime;
-				++debounceData.pressCount;
-			}
-
-			// Falling edge: button released.
-			else
-			{
-
-				Serial.printf(
-					"Press count: %u - Press time: %f s\n",
-					debounceData.pressCount,
-					(currentTime - debounceData.startTime) / 1000.0);
-			}
+		// Falling edge: button released.
+		else
+		{
+			// Log the duration of time that the button was pressed starting from the initial
+			// press
+			Serial.printf(
+				"Press count: %u - Press time: %f s\n",
+				buttonData.pressCount,
+				(currentTime - buttonData.pressStartTime) / 1000.0);
 		}
 	}
 }
 
+/**
+ * @brief Processes the keypad matrix and returns the current button press.
+ *
+ * @return Mapped key value.
+ */
 char getKeypadPress()
 {
 	for (size_t c{}; c < COLS; ++c)
 	{
 		// Select the current column for reading
-		digitalWrite(colPins[c], HIGH);
+		digitalWrite(Pins::COL[c], LOW);
 
 		for (size_t r{}; r < ROWS; ++r)
 		{
 			// Check if the current element is pressed
-			if (HIGH == digitalRead(rowPins[r]))
+			if (LOW == digitalRead(Pins::ROW[r]))
 			{
 				// Reset pin state
-				pinMode(colPins[c], LOW);
-				Serial.print(keypad[r][c]);
+				pinMode(Pins::COL[c], HIGH);
 
-				return N_TABLE[r][c];
+				// Return the mapped value
+				// Also calculate current octave * 12
+				return N_TABLE[r][c] + octave * 12;
 			}
 		}
 
 		// Reset pin state
-		digitalWrite(colPins[c], LOW);
+		digitalWrite(Pins::COL[c], HIGH);
 	}
 
 	// Base case where no keys are pressed
 	return NULL;
 }
 
+/**
+ * @brief Takes in a key and plays a tone using the key in the calculated frequency.
+ * @param key Value to use in the calculation.
+ *
+ * @note Does nothing for a frequency of 0.
+ */
 void handleTone(char key)
 {
 	const uint32_t frequency{440 * static_cast<uint32_t>(pow(2, ((key - 49)) / 12.0))};
 
+	// Ignore invalid frequencies
 	if (0 < frequency)
 	{
-		tone(SPEAKER_PIN, frequency, TONE_DURATION_MS);
+		tone(Pins::SPEAKER, frequency, TONE_DURATION_MS);
 	}
 }
 
 void loop()
 {
 	handleButtonPress();
-	// char key = getKeypadPress();
-	// handleTone(key);
+
+	char key = getKeypadPress();
+	handleTone(key);
 }
