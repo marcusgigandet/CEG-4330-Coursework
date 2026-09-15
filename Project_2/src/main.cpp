@@ -219,5 +219,9 @@ void loop()
 	handleButtonPress();
 
 	uint8_t n{getKeypadPress()};
-	handleTone(n);
+
+	if (0 < n)
+	{
+		handleTone(n);
+	}
 }
