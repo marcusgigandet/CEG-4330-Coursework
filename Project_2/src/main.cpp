@@ -74,7 +74,7 @@ namespace
 		/// Raw, current state of the button
 		uint8_t rawState{LOW};
 
-		/// Debounced state of the button press
+		/// Debounced state of the button
 		uint8_t debouncedState{LOW};
 
 		/// Start time of the debouncing
@@ -169,6 +169,9 @@ void handleButtonPress()
 /// @return Mapped key value.
 uint8_t getKeypadPress()
 {
+	static uint8_t prevKey;
+	uint8_t currentKey;
+
 	for (size_t c{}; c < COLS; ++c)
 	{
 		// Select the current column for reading
@@ -176,9 +179,14 @@ uint8_t getKeypadPress()
 
 		for (size_t r{}; r < ROWS; ++r)
 		{
+			currentKey = KEY_PAD[r][c];
+
 			// Check if the current element is pressed
-			if (LOW == digitalRead(Pins::ROW[r]))
+			if ((LOW == digitalRead(Pins::ROW[r])) && (prevKey != currentKey))
 			{
+				// Update press previous key
+				prevKey = currentKey;
+
 				// Reset pin state
 				pinMode(Pins::COL[c], HIGH);
 
@@ -193,6 +201,9 @@ uint8_t getKeypadPress()
 		// Reset pin state
 		digitalWrite(Pins::COL[c], HIGH);
 	}
+
+	// No keys are pressed
+	prevKey = 0;
 
 	// Base case where no keys are pressed
 	return 0;
