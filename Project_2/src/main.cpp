@@ -188,7 +188,7 @@ uint8_t getKeypadPress()
 				prevKey = currentKey;
 
 				// Reset pin state
-				pinMode(Pins::COL[c], HIGH);
+				digitalWrite(Pins::COL[c], HIGH);
 
 				// Log the pressed key
 				Serial.print(KEY_PAD[r][c]);
