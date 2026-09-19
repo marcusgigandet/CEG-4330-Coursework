@@ -170,7 +170,7 @@ void handleButtonPress()
 uint8_t getKeypadPress()
 {
 	static uint8_t prevKey;
-	uint8_t currentKey;
+	uint8_t		   currentKey;
 
 	for (size_t c{}; c < COLS; ++c)
 	{
@@ -215,7 +215,8 @@ uint8_t getKeypadPress()
 /// @note Does nothing for a frequency of 0.
 void handleTone(const uint8_t n)
 {
-	const uint32_t frequency{440 * static_cast<uint32_t>(pow(2, ((12 * octave + n - 49)) / 12.0))};
+	const double   exponent{(12.0 * octave + static_cast<double>(n) - 49.0) / 12.0};
+	const uint32_t frequency{static_cast<uint32_t>(440 * pow(2, exponent))};
 
 	// Ignore invalid frequencies and n-values
 	if ((0 != frequency) && (0 != n))
