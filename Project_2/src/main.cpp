@@ -42,7 +42,7 @@ namespace
 	constexpr uint16_t DEBOUNCE_DELAY_MS{10};
 
 	/// Duration to use for playing a tone on the speaker
-	constexpr uint16_t TONE_DURATION_MS{100};
+	constexpr uint16_t TONE_DURATION_MS{5};
 
 	/// Current octave. Offsets N by a multiple of 12 * octave.
 	uint32_t octave{};
@@ -169,8 +169,8 @@ void handleButtonPress()
 /// @return Mapped key value.
 uint8_t getKeypadPress()
 {
-	static uint8_t prevKey;
-	uint8_t		   currentKey;
+	static uint8_t prevKey{};
+	bool		   hasLow{};
 
 	for (size_t c{}; c < COLS; ++c)
 	{
@@ -179,19 +179,22 @@ uint8_t getKeypadPress()
 
 		for (size_t r{}; r < ROWS; ++r)
 		{
-			currentKey = KEY_PAD[r][c];
+			uint8_t currentKey{KEY_PAD[r][c]};
 
 			// Check if the current element is pressed
-			if ((LOW == digitalRead(Pins::ROW[r])) && (prevKey != currentKey))
+			if ((LOW == digitalRead(Pins::ROW[r])))
 			{
+				if (prevKey != currentKey)
+				{
+					// Log the pressed key
+					Serial.print((char)currentKey);
+				}
+				
 				// Update press previous key
 				prevKey = currentKey;
 
 				// Reset pin state
 				digitalWrite(Pins::COL[c], HIGH);
-
-				// Log the pressed key
-				Serial.print(KEY_PAD[r][c]);
 
 				// Return the mapped value
 				return N_TABLE[r][c];
@@ -216,7 +219,7 @@ uint8_t getKeypadPress()
 void handleTone(const uint8_t n)
 {
 	const double   exponent{(12.0 * octave + static_cast<double>(n) - 49.0) / 12.0};
-	const uint32_t frequency{static_cast<uint32_t>(440 * pow(2, exponent))};
+	const uint32_t frequency{static_cast<uint32_t>(440u * pow(2, exponent))};
 
 	// Ignore invalid frequencies and n-values
 	if ((0 != frequency) && (0 != n))
