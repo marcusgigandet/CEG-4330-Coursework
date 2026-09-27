@@ -6,8 +6,8 @@
 
 #define DISTANCE 10
 
-float speed = 0.0f;
-uint32_t beltStartTime = 0;
+volatile float speed = 0.0f;
+volatile uint32_t beltStartTime = 0;
 
 void IRAM_ATTR edgeChangeISR()
 {
