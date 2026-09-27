@@ -5,6 +5,7 @@
 #include <Arduino.h>
 
 #define DISTANCE 10
+#define EDGE_PIN 23
 
 volatile float speed = 0.0f;
 volatile uint32_t beltStartTime = 0;
