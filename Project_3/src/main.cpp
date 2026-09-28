@@ -15,8 +15,8 @@
 #define BUTTON_HELD_DURATION_MS 11'250 // Unused for this project
 #define ERROR_MARGIN_PERCENT 10
 
-#define CHECK_ERROR_MARGIN(x, time)                                                                \
-	(x <= (time + (time / ERROR_MARGIN_PERCENT)) && x >= (time - (time / ERROR_MARGIN_PERCENT)))
+#define CHECK_ERROR_MARGIN(time, duration)                                                                \
+	(time, duration <= (duration + (duration / ERROR_MARGIN_PERCENT)) && time, duration >= (duration - (duration / ERROR_MARGIN_PERCENT)))
 
 #define LEFT_ARROW_BUTTON 0x0
 #define RIGHT_ARROW_BUTTON 0x1
@@ -152,7 +152,7 @@ void onIRFallingEdgeISR()
 
 	case ir_message_state::StartBit:
 		// Update message state
-		if (CHECK_ERROR_MARGIN(START_BIT_DURATION_MS, timeSinceLastTimeMicros))
+		if (CHECK_ERROR_MARGIN(timeSinceLastTimeMicros, START_BIT_DURATION_MS))
 		{
 			irMessageState = ir_message_state::InProgress;
 		}
@@ -165,13 +165,13 @@ void onIRFallingEdgeISR()
 	// Check for 0 or 1 bit
 	case ir_message_state::InProgress:
 		// Set bit to 0
-		if (CHECK_ERROR_MARGIN(ZERO_TRANSMITTED_DURATION_MS, timeSinceLastTimeMicros))
+		if (CHECK_ERROR_MARGIN(timeSinceLastTimeMicros, ZERO_TRANSMITTED_DURATION_MS))
 		{
 			irMessage &= ~(1 << bitIndex);
 		}
 
 		// Set bit to 1
-		else if (CHECK_ERROR_MARGIN(ONE_TRANSMITTED_DURATION_MS, timeSinceLastTimeMicros))
+		else if (CHECK_ERROR_MARGIN(timeSinceLastTimeMicros, ONE_TRANSMITTED_DURATION_MS))
 		{
 			irMessage |= (1 << bitIndex);
 		}
