@@ -15,8 +15,9 @@
 #define BUTTON_HELD_DURATION_MS 11'250 // Unused for this project
 #define ERROR_MARGIN_PERCENT 10
 
-#define CHECK_ERROR_MARGIN(time, duration)                                                                \
-	(time, duration <= (duration + (duration / ERROR_MARGIN_PERCENT)) && time, duration >= (duration - (duration / ERROR_MARGIN_PERCENT)))
+#define CHECK_ERROR_MARGIN(time, duration)                                                         \
+	(time <= (duration + (duration / ERROR_MARGIN_PERCENT)) &&                                     \
+	 time >= (duration - (duration / ERROR_MARGIN_PERCENT)))
 
 #define LEFT_ARROW_BUTTON 0x0
 #define RIGHT_ARROW_BUTTON 0x1
@@ -33,7 +34,7 @@ enum class ir_message_state
 volatile uint32_t		  lastTimeMicros;
 volatile uint32_t		  irMessage{};
 volatile ir_message_state irMessageState{ir_message_state::Idle};
-uint64_t				  alarmValue = TIMER_FREQUENCY / 5;
+uint64_t				  alarmValue{TIMER_FREQUENCY / 5};
 
 hw_timer_t* timer{};
 
