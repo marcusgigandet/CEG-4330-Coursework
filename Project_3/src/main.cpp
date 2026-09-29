@@ -19,9 +19,9 @@
 	(time <= (duration + (duration / ERROR_MARGIN_PERCENT)) &&                                     \
 	 time >= (duration - (duration / ERROR_MARGIN_PERCENT)))
 
-#define LEFT_ARROW_BUTTON 0x0
-#define RIGHT_ARROW_BUTTON 0x1
-#define OK_BUTTON 0x2
+#define LEFT_ARROW_BUTTON 0xF708FF00
+#define RIGHT_ARROW_BUTTON 0xA55AFF00
+#define OK_BUTTON 0xF20DFF00
 
 enum class ir_message_state
 {
@@ -46,6 +46,8 @@ void setupTimer();
 
 void setup()
 {
+	Serial.begin(9600);
+
 	// Configure the LED
 	pinMode(LED_PIN, OUTPUT);
 
@@ -107,10 +109,11 @@ void loop()
 			Serial.flush();
 
 			// Disable interrupts before entering sleep state
+			timerStop(timer);
 			detachInterrupt(digitalPinToInterrupt(IR_PIN));
 
 			// Disable LED
-			digitalWrite(LED_PIN, LOW);
+			digitalWrite(LED_PIN, HIGH);
 
 			// Enable the IR_PIN to wake microcontroller from sleep
 			gpio_wakeup_enable((gpio_num_t)IR_PIN, GPIO_INTR_LOW_LEVEL);
@@ -120,7 +123,10 @@ void loop()
 
 			// Display wakeup message
 			Serial.println("Exited sleeping state, continuing to run...");
+			
+			// Enable interrupts
 			setupIR();
+			timerStart(timer);
 		}
 		break;
 
@@ -132,13 +138,13 @@ void loop()
 void onTimerISR()
 {
 	// Toggle the LED
-	digitalWrite(LED_PIN, 0 == digitalRead(LED_PIN));
+	digitalWrite(LED_PIN, !digitalRead(LED_PIN));
 }
 
 void onIRFallingEdgeISR()
 {
 	static uint8_t bitIndex{};
-	uint32_t	   timeSinceLastTimeMicros = micros() - lastTimeMicros;
+	uint32_t	   timeSinceLastTimeMicros{micros() - lastTimeMicros};
 
 	// Update time
 	lastTimeMicros = micros();
