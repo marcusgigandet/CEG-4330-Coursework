@@ -14,9 +14,9 @@ void setup()
     pinMode(HUMIDITY_PIN, ANALOG);
     
     // Initialize array
-    for (uint8_t i = 0; i < FRAME_COUNT; ++i)
+    for (unsigned int & i : dataFrame)
     {
-        dataFrame[i] = analogRead(HUMIDITY_PIN);
+        i = analogRead(HUMIDITY_PIN);
     }
 }
 

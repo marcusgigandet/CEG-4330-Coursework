@@ -1,7 +1,10 @@
 #include <Arduino.h>
 
-#define BUTTON_PIN 23
-#define DEBOUNCE_DELAY 50 // ms
+// Pins
+constexpr uint32_t BUTTON_PIN{23};
+
+// Global variables
+constexpr uint32_t DEBOUNCE_DELAY_MS{50};
 
 struct ButtonState
 {
@@ -12,11 +15,15 @@ struct ButtonState
 
 bool isButtonPressed()
 {
-	static ButtonState buttonState = {LOW, LOW, 0};
-	uint32_t		   currentTime = millis();
+	static ButtonState buttonState{
+		LOW,
+		LOW,
+		0,
+	};
+	uint32_t currentTime{millis()};
 
 	// Read current button state
-	uint8_t currentReading = (REG_READ(GPIO_IN_REG) >> BUTTON_PIN) & 1;
+	uint8_t currentReading = digitalRead(BUTTON_PIN);
 
 	// Check if raw state has changed
 	if (currentReading != buttonState.lastRawState)
@@ -26,7 +33,7 @@ bool isButtonPressed()
 	}
 
 	// If enough time has passed since last change, update debounced state
-	if (currentTime - buttonState.lastDebounceTime > DEBOUNCE_DELAY)
+	if (currentTime - buttonState.lastDebounceTime > DEBOUNCE_DELAY_MS)
 	{
 		buttonState.debouncedState = currentReading;
 	}
@@ -43,8 +50,8 @@ void setup()
 
 void loop()
 {
-	static bool lastButtonState	   = LOW;
-	bool		currentButtonState = isButtonPressed();
+	static bool lastButtonState{LOW};
+	bool		currentButtonState{isButtonPressed()};
 
 	// Detect rising edge
 	if (currentButtonState == HIGH && lastButtonState == LOW)

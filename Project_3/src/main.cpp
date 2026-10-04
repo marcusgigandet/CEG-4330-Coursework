@@ -2,22 +2,26 @@
 #include <driver/gpio.h>
 #include <esp_sleep.h>
 
-#define IR_PIN 12
-#define LED_PIN 2
+// Pins
+constexpr uint8_t IR_PIN{12};
+constexpr uint8_t LED_PIN{2};
 
-#define TIMER_FREQUENCY 10'000
+constexpr uint32_t TIMER_FREQUENCY{10'000};
 
-#define TIMEOUT_DURATION_MICROS 5'000'000
+constexpr uint32_t TIMEOUT_DURATION_MICROS{5'000'000};
 
-#define START_BIT_DURATION_MS 13'500
-#define ZERO_TRANSMITTED_DURATION_MS 1'125
-#define ONE_TRANSMITTED_DURATION_MS 2'250
-#define BUTTON_HELD_DURATION_MS 11'250 // Unused for this project
-#define ERROR_MARGIN_PERCENT 10
+// Timing constants
+constexpr uint32_t START_BIT_DURATION_MS{13'500};
+constexpr uint32_t ZERO_TRANSMITTED_DURATION_MS{1'125};
+constexpr uint32_t ONE_TRANSMITTED_DURATION_MS{2'250};
+constexpr uint32_t BUTTON_HELD_DURATION_MS{11'250}; // Unused for this project
+
+// Error margin for timings
+constexpr uint8_t ERROR_MARGIN_PERCENT{10};
 
 #define CHECK_ERROR_MARGIN(time, duration)                                                         \
-	(time <= (duration + (duration / ERROR_MARGIN_PERCENT)) &&                                     \
-	 time >= (duration - (duration / ERROR_MARGIN_PERCENT)))
+	((time) <= ((duration) + ((duration) / ERROR_MARGIN_PERCENT)) &&                                     \
+	 (time) >= ((duration) - ((duration) / ERROR_MARGIN_PERCENT)))
 
 #define LEFT_ARROW_BUTTON 0xF708FF00
 #define RIGHT_ARROW_BUTTON 0xA55AFF00
@@ -123,7 +127,7 @@ void loop()
 
 			// Display wakeup message
 			Serial.println("Exited sleeping state, continuing to run...");
-			
+
 			// Enable interrupts
 			setupIR();
 			timerStart(timer);
