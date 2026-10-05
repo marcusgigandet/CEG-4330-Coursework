@@ -43,8 +43,10 @@ bool isButtonPressed()
 
 void setup()
 {
+	// Serial
 	Serial.begin(9600);
 
+	// Button
 	pinMode(BUTTON_PIN, INPUT_PULLDOWN);
 }
 
