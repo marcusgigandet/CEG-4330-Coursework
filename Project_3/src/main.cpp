@@ -6,10 +6,6 @@
 constexpr uint8_t IR_PIN{12};
 constexpr uint8_t LED_PIN{2};
 
-constexpr uint32_t TIMER_FREQUENCY{10'000};
-
-constexpr uint32_t TIMEOUT_DURATION_MICROS{5'000'000};
-
 // Timing constants
 constexpr uint32_t START_BIT_DURATION_MS{13'500};
 constexpr uint32_t ZERO_TRANSMITTED_DURATION_MS{1'125};
@@ -20,12 +16,13 @@ constexpr uint32_t BUTTON_HELD_DURATION_MS{11'250}; // Unused for this project
 constexpr uint8_t ERROR_MARGIN_PERCENT{10};
 
 #define CHECK_ERROR_MARGIN(time, duration)                                                         \
-	((time) <= ((duration) + ((duration) / ERROR_MARGIN_PERCENT)) &&                                     \
+	((time) <= ((duration) + ((duration) / ERROR_MARGIN_PERCENT)) &&                               \
 	 (time) >= ((duration) - ((duration) / ERROR_MARGIN_PERCENT)))
 
-#define LEFT_ARROW_BUTTON 0xF708FF00
-#define RIGHT_ARROW_BUTTON 0xA55AFF00
-#define OK_BUTTON 0xF20DFF00
+// Button codes
+constexpr uint32_t LEFT_ARROW_BUTTON  = 0xF708FF00;
+constexpr uint32_t RIGHT_ARROW_BUTTON = 0xA55AFF00;
+constexpr uint32_t OK_BUTTON		  = 0xF20DFF00;
 
 enum class ir_message_state
 {
@@ -35,11 +32,17 @@ enum class ir_message_state
 	Idle,
 };
 
+// ISR vars
 volatile uint32_t		  lastTimeMicros;
 volatile uint32_t		  irMessage{};
 volatile ir_message_state irMessageState{ir_message_state::Idle};
-uint64_t				  alarmValue{TIMER_FREQUENCY / 5};
+volatile bool			  toggleLED = false;
 
+// Timer config
+constexpr uint32_t TIMER_FREQUENCY{10'000};
+constexpr uint32_t TIMEOUT_DURATION_MICROS{5'000'000};
+
+uint64_t	alarmValue{TIMER_FREQUENCY / 5};
 hw_timer_t* timer{};
 
 void IRAM_ATTR onTimerISR();
@@ -50,12 +53,14 @@ void setupTimer();
 
 void setup()
 {
+	// ESP
+	esp_sleep_enable_gpio_wakeup();
+
+	// Serial
 	Serial.begin(9600);
 
-	// Configure the LED
+	// LED
 	pinMode(LED_PIN, OUTPUT);
-
-	esp_sleep_enable_gpio_wakeup();
 
 	setupIR();
 	setupTimer();
@@ -78,18 +83,22 @@ void loop()
 		case OK_BUTTON:
 			// Toggle the LED
 			digitalWrite(LED_PIN, !digitalRead(LED_PIN));
+			toggleLED = true;
 			break;
 
 		case LEFT_ARROW_BUTTON:
 			// Half the frequency
 			alarmValue *= 2;
+			toggleLED = false;
 			break;
 
 		case RIGHT_ARROW_BUTTON:
 			// Double the frequency
 			alarmValue /= 2;
+			toggleLED = false;
 			break;
 		default:
+			toggleLED = false;
 			break;
 		}
 
@@ -117,7 +126,10 @@ void loop()
 			detachInterrupt(digitalPinToInterrupt(IR_PIN));
 
 			// Disable LED
-			digitalWrite(LED_PIN, HIGH);
+			if (!toggleLED)
+			{
+				digitalWrite(LED_PIN, HIGH);
+			}
 
 			// Enable the IR_PIN to wake microcontroller from sleep
 			gpio_wakeup_enable((gpio_num_t)IR_PIN, GPIO_INTR_LOW_LEVEL);
@@ -142,16 +154,17 @@ void loop()
 void onTimerISR()
 {
 	// Toggle the LED
-	digitalWrite(LED_PIN, !digitalRead(LED_PIN));
+	if (!toggleLED)
+	{
+		// Only update if the toggle is not set
+		digitalWrite(LED_PIN, !digitalRead(LED_PIN));
+	}
 }
 
 void onIRFallingEdgeISR()
 {
 	static uint8_t bitIndex{};
 	uint32_t	   timeSinceLastTimeMicros{micros() - lastTimeMicros};
-
-	// Update time
-	lastTimeMicros = micros();
 
 	switch (irMessageState)
 	{
@@ -199,6 +212,9 @@ void onIRFallingEdgeISR()
 	default:
 		break;
 	}
+
+	// Update time after the ISR has been serviced
+	lastTimeMicros = micros();
 }
 
 void setupIR()
