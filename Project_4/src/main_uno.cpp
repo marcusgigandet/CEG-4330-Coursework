@@ -1,13 +1,8 @@
 #include "common.hpp"
 #include <Arduino.h>
+#include <avr/io.h>
 
 constexpr uint8_t PWM_PIN = 9; // OC1A, the Timer1 output pin
-constexpr uint8_t IN_PIN  = 2; // connect to PWM_PIN with a jumper wire
-
-ISR(pwmISR)
-{
-
-}
 
 void setup()
 {
@@ -23,18 +18,25 @@ void setup()
 
 	// Setup GPIO and interrupt
 	pinMode(PWM_PIN, OUTPUT);
+
+	// IN_PIN
+	pinMode(IN_PIN, INPUT);
+	attachInterrupt(digitalPinToInterrupt(IN_PIN), pwmISR, CHANGE);
 }
 
 void changeDutyCycle(long value)
 {
 	// Ignore invalid numbers
-	// Ignore invalid numbers
-	if (value > 255)
+	if (value < 0 || value > 255)
 	{
 		return;
 	}
 
-	Serial.printf("Set duty: %ld", value);
+	// Set duty
+	OCR1A = value * ICR1 / 255;
+
+	Serial.print("Set duty: ");
+	Serial.println(value);
 }
 
 void changeFrequency(long value)
@@ -45,5 +47,8 @@ void changeFrequency(long value)
 		return;
 	}
 
-	Serial.printf("Set frequency: %ld", value);
+	ICR1   = 1000000 / value; // period (us)
+
+	Serial.print("Set frequency: ");
+	Serial.println(value);
 }
