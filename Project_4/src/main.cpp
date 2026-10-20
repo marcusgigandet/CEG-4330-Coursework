@@ -25,7 +25,7 @@ void setup()
 void changeDutyCycle(long value)
 {
 	// Ignore invalid numbers
-	if (value > 255)
+	if (value < 0 || value > 255)
 	{
 		return;
 	}
