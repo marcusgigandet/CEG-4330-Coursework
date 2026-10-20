@@ -32,6 +32,9 @@ void changeDutyCycle(long value)
 		return;
 	}
 
+	// Update stored val
+	duty = value;
+
 	// Set duty
 	OCR1A = value * ICR1 / 255;
 
@@ -47,7 +50,11 @@ void changeFrequency(long value)
 		return;
 	}
 
+	// Update stored val
+	freq = value;
+
 	ICR1   = 1000000 / value; // period (us)
+    OCR1A = duty * ICR1 / 255; // Keep previous duty cycle
 
 	Serial.print("Set frequency: ");
 	Serial.println(value);

@@ -13,6 +13,7 @@ constexpr uint8_t IN_PIN = 2; // connect to PWM_PIN with a jumper wire
 
 constexpr uint32_t BAUDRATE = 115200;
 
+// Global vars
 extern uint8_t  duty;
 extern uint16_t freq;
 

@@ -30,6 +30,9 @@ void changeDutyCycle(long value)
 		return;
 	}
 
+	// Update stored val
+	duty = value;
+
 	Serial.printf("Set duty: %ld\n", value);
 	ledcWrite(PWM_PIN, value);
 }
@@ -41,6 +44,9 @@ void changeFrequency(long value)
 	{
 		return;
 	}
+
+	// Update stored val
+	freq = value;
 
 	Serial.printf("Set frequency: %ld Hz\n", value);
 	ledcChangeFrequency(PWM_PIN, value, PWM_BITS);

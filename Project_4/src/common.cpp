@@ -1,12 +1,12 @@
 #include "common.hpp"
 #include <Arduino.h>
 
-uint8_t  duty = 127;
-uint16_t freq = 5000;
-
 volatile uint32_t lowSumUS	= 0;
 volatile uint32_t highSumUS = 0;
 volatile uint32_t edgeCount = 0;
+
+uint8_t  duty = 127;
+uint16_t freq = 5000;
 
 void getSerialInput()
 {
