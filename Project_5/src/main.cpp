@@ -1,4 +1,15 @@
+#include "ArduinoJson.hpp"
+#include "ArduinoJson/Deserialization/DeserializationError.hpp"
+#include "ArduinoJson/Document/JsonDocument.hpp"
+#include "ArduinoJson/Json/JsonDeserializer.hpp"
+#include "ArduinoJson/Strings/JsonString.hpp"
+#include "board.hpp"
+#include "button.hpp"
+#include "driver/ledc.h"
+#include "esp32-hal-ledc.h"
+#include "esp32-hal.h"
 #include "esp_camera.h"
+#include "esp_wifi_types_generic.h"
 #include <ArduinoJson.h>
 #include <WiFi.h>
 
@@ -8,11 +19,9 @@
 #define CAMERA_PORT 8000
 #define JSON_PORT 8001
 
-// Button and LED Settings
-#define BUTTON_PIN 15 // Physical pin 23, button to ground
-#define LED_PIN 2	  // Onboard LED
 #define DEBOUNCE_MS 30
 #define PWM_CHANNEL 4 // LEDC channel 0 is used by the camera clock, so don't use it for the LED
+#define PWM_RESOLUTION 8
 
 // Camera Settings
 #define PWDN_GPIO_NUM -1
@@ -54,6 +63,24 @@ bool pwmOn	  = false;
 
 void connectToWiFi(const char* ssid, const char* password)
 {
+	uint32_t startTimeMS   = millis();
+	uint32_t currentTimeMS = millis();
+
+	WiFi.begin(ssid, password);
+
+	while (WiFi.status() != WL_CONNECTED)
+	{
+		// Retry every 5 seconds if it fails to connect
+		if (currentTimeMS - startTimeMS > 5'000)
+		{
+			WiFi.disconnect();
+			Serial.println("Failed to establish WiFi connection, retrying...");
+			WiFi.begin(ssid, password);
+		}
+
+		// Update state
+		currentTimeMS = millis();
+	}
 }
 
 void startCameraServer(int port)
@@ -109,12 +136,26 @@ void startCameraServer(int port)
 
 void startJSONServer(int port)
 {
+	jsonServer = WiFiServer(port);
+	jsonServer.begin();
 }
 
 void updateJSON()
 {
-	json["buttonPresses"]	= buttonPresses;
-	json["buttonPressTime"] = buttonPressTime;
+	uint8_t oldState = buttonData.debouncedState;
+	handleButtonPress();
+
+	// Log to serial
+	if (oldState != buttonData.debouncedState)
+	{
+		String jsonString;
+
+		json["buttonPresses"]	= buttonData.pressCount;
+		json["buttonPressTime"] = buttonData.pressTime;
+
+		serializeJson(json, jsonString);
+		Serial.println(jsonString);
+	}
 }
 
 void setup()
@@ -124,9 +165,10 @@ void setup()
 	Serial.setTimeout(10); // Timeout is needed to continue to camera processing quickly
 
 	// Button with internal pull up, LED off
-	pinMode(BUTTON_PIN, INPUT_PULLUP);
-	pinMode(LED_PIN, OUTPUT);
-	digitalWrite(LED_PIN, LOW);
+	pinMode(Pins::BUTTON, INPUT_PULLUP);
+	pinMode(Pins::LED, OUTPUT);
+	digitalWrite(Pins::LED, LOW);
+	ledcAttachChannel(Pins::LED, 0, PWM_RESOLUTION, PWM_CHANNEL);
 
 	// Connect to the SSID with PASSWORD
 	connectToWiFi(SSID, PASSWORD);
@@ -143,8 +185,18 @@ void setup()
 	Serial.println("Setup complete!");
 }
 
-bool sendJSONToClient(WiFiClient client)
+bool sendJSONToClient(WiFiClient& client)
 {
+	String jsonString;
+
+	// Send serialized json over WiFi
+	if (0 == serializeJson(json, jsonString))
+	{
+		client.println(jsonString.c_str());
+		return true;
+	}
+
+	// An error occurred during serialization
 	return false;
 }
 
@@ -171,8 +223,37 @@ bool sendImageToClient(WiFiClient client)
 	return false;
 }
 
-void handleJSONFromClient(WiFiClient client)
+void handleJSONFromClient(WiFiClient& client)
 {
+	if (!client.available())
+	{
+		return;
+	}
+
+	String		 str = client.readString();
+	JsonDocument rx;
+
+	if (DeserializationError::Ok == deserializeJson(rx, str))
+	{
+		if (rx["frequency"].is<float>() && rx["dutyCycle"].is<float>())
+		{
+			// Convert vars to uint for duty
+			uint32_t freqHz = (uint32_t)roundf(
+				constrain((float)rx["frequency"], 1.0f, 40000.0f)
+			);
+			uint8_t duty = (uint8_t)roundf(
+				constrain((float)rx["dutyCycle"], 0.0f, 1.0f) * pow(2, PWM_RESOLUTION)
+			);
+
+
+			// Update PWM
+			ledcChangeFrequency(Pins::LED, freqHz, PWM_RESOLUTION);
+			ledcWrite(Pins::LED, duty);
+
+			// Update status
+			pwmOn = (0 != freqHz && 0 != duty);
+		}
+	}
 }
 
 void loop()
