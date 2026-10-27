@@ -14,8 +14,8 @@
 #include <WiFi.h>
 
 // WiFi Settings
-#define SSID "your-ssid-here"
-#define PASSWORD "your-password-here"
+#define SSID "XXX"
+#define PASSWORD "XXX"
 #define CAMERA_PORT 8000
 #define JSON_PORT 8001
 
@@ -48,18 +48,7 @@ WiFiClient jsonClient;
 
 JsonDocument json;
 
-// Button state (debounced)
-int			  lastReading	  = HIGH;
-int			  stableReading	  = HIGH;
-unsigned long lastChangeTime  = 0;
-int			  buttonState	  = 0; // 1 = pressed, 0 = released
-int			  buttonPresses	  = 0;
-unsigned long buttonPressTime = 0; // millis() of the last press
-unsigned long lastPressTime	  = 0; // millis() of the last press
-
-// LED state
-int	 ledState = 0;
-bool pwmOn	  = false;
+bool sendJSONToClient(WiFiClient& client);
 
 void connectToWiFi(const char* ssid, const char* password)
 {
@@ -76,6 +65,7 @@ void connectToWiFi(const char* ssid, const char* password)
 			WiFi.disconnect();
 			Serial.println("Failed to establish WiFi connection, retrying...");
 			WiFi.begin(ssid, password);
+			startTimeMS = millis();
 		}
 
 		// Update state
@@ -136,6 +126,11 @@ void startCameraServer(int port)
 
 void startJSONServer(int port)
 {
+	if (WiFi.status() != WL_CONNECTED)
+	{
+		return;
+	}
+
 	jsonServer = WiFiServer(port);
 	jsonServer.begin();
 }
@@ -145,16 +140,18 @@ void updateJSON()
 	uint8_t oldState = buttonData.debouncedState;
 	handleButtonPress();
 
+	json["buttonPresses"]	= buttonData.pressCount;
+	json["buttonPressTime"] = buttonData.pressTime;
+
 	// Log to serial
-	if (oldState != buttonData.debouncedState)
+	if ((oldState != buttonData.debouncedState) && (oldState == LOW))
 	{
 		String jsonString;
 
-		json["buttonPresses"]	= buttonData.pressCount;
-		json["buttonPressTime"] = buttonData.pressTime;
-
 		serializeJson(json, jsonString);
 		Serial.println(jsonString);
+
+		sendJSONToClient(jsonClient);
 	}
 }
 
@@ -167,8 +164,12 @@ void setup()
 	// Button with internal pull up, LED off
 	pinMode(Pins::BUTTON, INPUT_PULLUP);
 	pinMode(Pins::LED, OUTPUT);
-	digitalWrite(Pins::LED, LOW);
-	ledcAttachChannel(Pins::LED, 0, PWM_RESOLUTION, PWM_CHANNEL);
+
+	// Use active low for LED for this MCU
+	// This means updating duty cycle to be reversed
+	digitalWrite(Pins::LED, HIGH);
+	ledcAttachChannel(Pins::LED, 40000, PWM_RESOLUTION, PWM_CHANNEL);
+	ledcWrite(Pins::LED, (1 << PWM_RESOLUTION) - 1);
 
 	// Connect to the SSID with PASSWORD
 	connectToWiFi(SSID, PASSWORD);
@@ -182,6 +183,9 @@ void setup()
 	// Initialize the JSON
 	updateJSON();
 
+	Serial.print("ESP32 IP address: ");
+	Serial.println(WiFi.localIP());
+
 	Serial.println("Setup complete!");
 }
 
@@ -190,9 +194,9 @@ bool sendJSONToClient(WiFiClient& client)
 	String jsonString;
 
 	// Send serialized json over WiFi
-	if (0 == serializeJson(json, jsonString))
+	if (serializeJson(json, jsonString) > 0)
 	{
-		client.println(jsonString.c_str());
+		client.println(jsonString);
 		return true;
 	}
 
@@ -230,34 +234,34 @@ void handleJSONFromClient(WiFiClient& client)
 		return;
 	}
 
-	String		 str = client.readString();
+	String receivedData = client.readStringUntil('\n');
+	receivedData.trim();
 	JsonDocument rx;
 
-	if (DeserializationError::Ok == deserializeJson(rx, str))
+	if (DeserializationError::Ok == deserializeJson(rx, receivedData))
 	{
 		if (rx["frequency"].is<float>() && rx["dutyCycle"].is<float>())
-		{
-			// Convert vars to uint for duty
-			uint32_t freqHz = (uint32_t)roundf(
-				constrain((float)rx["frequency"], 1.0f, 40000.0f)
-			);
+		{			
+			// Convert vars to uint for pwm
+			uint32_t freqHz = (uint32_t)roundf(constrain((float)rx["frequency"], 1.0f, 40000.0f));
 			uint8_t duty = (uint8_t)roundf(
-				constrain((float)rx["dutyCycle"], 0.0f, 1.0f) * pow(2, PWM_RESOLUTION)
-			);
+				constrain((float)rx["dutyCycle"], 0.0f, 100.0f)
+				/ 100.0f * ((1U << PWM_RESOLUTION) - 1U));
+			
+			Serial.printf("Processed Json %u, %u\n", freqHz, duty);
 
-
-			// Update PWM
+			// Update statuses
+			// This MCU uses active low, so we need to invert duty cycle
 			ledcChangeFrequency(Pins::LED, freqHz, PWM_RESOLUTION);
-			ledcWrite(Pins::LED, duty);
-
-			// Update status
-			pwmOn = (0 != freqHz && 0 != duty);
+			ledcWrite(Pins::LED, (1U << PWM_RESOLUTION) - duty - 1);
 		}
 	}
 }
 
 void loop()
 {
+	updateJSON();
+
 	// Check if a new camera client connected
 	if (!cameraClient.connected())
 	{

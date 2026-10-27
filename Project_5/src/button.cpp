@@ -31,12 +31,16 @@ void handleButtonPress()
 		buttonData.debouncedState = buttonData.rawState;
 
 		// Rising edge: button pressed
-		if (rawButtonState == HIGH)
+		if (rawButtonState == LOW)
 		{
 			buttonData.pressStartTime = currentTime;
 			++buttonData.pressCount;
 		}
 	}
 
-    buttonData.pressTime = currentTime - buttonData.pressStartTime;
+    // Update press duration
+    if (buttonData.debouncedState == LOW)
+    {
+        buttonData.pressTime = currentTime - buttonData.pressStartTime;
+    }
 }

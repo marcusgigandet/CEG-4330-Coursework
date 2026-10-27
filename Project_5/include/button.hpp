@@ -5,10 +5,10 @@
 struct ButtonData
 {
     /// Raw, current state of the button
-    uint8_t rawState{LOW};
+    uint8_t rawState{HIGH};
 
     /// Debounced state of the button
-    uint8_t debouncedState{LOW};
+    uint8_t debouncedState{HIGH};
 
     /// Start time of the debouncing
     uint32_t debounceStartTime{};
