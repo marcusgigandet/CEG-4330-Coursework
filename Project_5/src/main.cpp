@@ -126,20 +126,24 @@ void startCameraServer(int port)
 
 void startJSONServer(int port)
 {
+	// Return early on no WiFi connection
 	if (WiFi.status() != WL_CONNECTED)
 	{
 		return;
 	}
 
+	// Start server
 	jsonServer = WiFiServer(port);
 	jsonServer.begin();
 }
 
 void updateJSON()
 {
+	// Process the button and check for a changed debounced state
 	uint8_t oldState = buttonData.debouncedState;
 	handleButtonPress();
 
+	// Update json
 	json["buttonPresses"]	= buttonData.pressCount;
 	json["buttonPressTime"] = buttonData.pressTime;
 
@@ -148,9 +152,11 @@ void updateJSON()
 	{
 		String jsonString;
 
+		// Log json to serial
 		serializeJson(json, jsonString);
 		Serial.println(jsonString);
 
+		// Send json over WiFi
 		sendJSONToClient(jsonClient);
 	}
 }
