@@ -5,7 +5,7 @@
 
 void Button::button_task(void* parameter)
 {
-	Button* button = static_cast<Button*>(parameter);
+	auto* button = static_cast<Button*>(parameter);
 	uint8_t last_debounced_state;
 	uint8_t current_debounced_state;
 
@@ -19,12 +19,14 @@ void Button::button_task(void* parameter)
 
 		current_debounced_state = button->m_debounced_state;
 
-		if (last_debounced_state != current_debounced_state)
+		// Check if button is just pressed
+		if ((last_debounced_state != current_debounced_state) && (last_debounced_state == HIGH))
 		{
 			// Update json entries
 			button->m_json.update_json(button->press_count(), button->press_duration());
 
 			// Log to serial
+			Serial.println(button->m_json.to_string());
 
 			// Log to Python if connected
 		}
@@ -55,7 +57,7 @@ void Button::process()
 		// Update the state of the debounced press
 		m_debounced_state = m_raw_state;
 
-		// Rising edge: button pressed
+		// Falling edge: button pressed
 		if (m_raw_state == LOW)
 		{
 			m_press_start_time = CURRENT_TIME;
@@ -72,6 +74,4 @@ void Button::process()
 	{
 		m_press_duration = 0;
 	}
-
-	m_json.update_json(m_press_count, m_press_duration);
 }

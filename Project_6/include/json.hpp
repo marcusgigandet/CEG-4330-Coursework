@@ -21,4 +21,6 @@ public:
     bool send_json_to_client(const WiFiClient& client);
 
 	void update_json(uint32_t press_count, uint32_t press_duration);
+
+	[[nodiscard]] String to_string() const;
 };

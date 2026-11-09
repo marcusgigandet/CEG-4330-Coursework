@@ -15,7 +15,7 @@ void Json::handle_json_from_client_task(void* parameter)
 
 void Json::handle_json_from_client(WiFiClient& client)
 {
-	if (!client.available())
+	if (0 == client.available())
 	{
 		return;
 	}
@@ -72,4 +72,13 @@ void Json::update_json(uint32_t press_count, uint32_t press_duration)
 {
 	m_json["buttonPresses"]	= press_count;
 	m_json["buttonPressTime"] = press_duration;
+}
+
+String Json::to_string() const
+{
+	String json_string;
+
+	(void)serializeJson(m_json, json_string);
+
+	return json_string;
 }
