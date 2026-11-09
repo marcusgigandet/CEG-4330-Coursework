@@ -4,43 +4,37 @@
 
 constexpr uint32_t DEBOUNCE_DELAY_MS = 10;
 
-ButtonData buttonData{};
-
-/// @brief Handles the button presses for the standalone button.
-///
-/// This handles any debouncing before confirming the button press.
-/// This also logs the button press duration (press after debouncing to release) to serial comm.
-void handleButtonPress()
+void Button::handle_press()
 {
-	const uint8_t  rawButtonState{static_cast<uint8_t>(digitalRead(Pins::BUTTON))};
-	const uint32_t currentTime{millis()};
+	const uint8_t  RAW_BUTTON_STATE{static_cast<uint8_t>(digitalRead(Pins::BUTTON))};
+	const uint32_t CURRENT_TIME{millis()};
 
 	// The raw input changed, start the debounce period
-	if (rawButtonState != buttonData.rawState)
+	if (RAW_BUTTON_STATE != m_raw_state)
 	{
-		buttonData.rawState			 = rawButtonState;
-		buttonData.debounceStartTime = currentTime;
+		m_raw_state			 = RAW_BUTTON_STATE;
+		m_debounce_start_time = CURRENT_TIME;
 	}
 
 	// Check for valid duration to prevent erroneous button presses
 	// Also check that the state has changed to prevent recording multiple presses
-	if (((currentTime - buttonData.debounceStartTime) >= DEBOUNCE_DELAY_MS) &&
-		(buttonData.rawState != buttonData.debouncedState))
+	if (((CURRENT_TIME - m_debounce_start_time) >= DEBOUNCE_DELAY_MS) &&
+		(m_raw_state != m_debounced_state))
 	{
 		// Update the state of the debounced press
-		buttonData.debouncedState = buttonData.rawState;
+		m_debounced_state = m_raw_state;
 
 		// Rising edge: button pressed
-		if (rawButtonState == LOW)
+		if (m_raw_state == LOW)
 		{
-			buttonData.pressStartTime = currentTime;
-			++buttonData.pressCount;
+			m_press_start_time = CURRENT_TIME;
+			++m_press_count;
 		}
 	}
 
     // Update press duration
-    if (buttonData.debouncedState == LOW)
+    if (m_debounced_state == LOW)
     {
-        buttonData.pressTime = currentTime - buttonData.pressStartTime;
+        m_press_duration = CURRENT_TIME - m_press_start_time;
     }
 }

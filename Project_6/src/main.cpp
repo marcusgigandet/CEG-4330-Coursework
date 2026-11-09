@@ -31,6 +31,7 @@ TaskHandle_t g_handle_json_from_client_task_handle;
 TaskHandle_t g_button_task_handle;
 
 void connect_to_wifi(const char* ssid, const char* password);
+void create_tasks();
 
 void connect_to_wifi(const char* ssid, const char* password)
 {
@@ -43,6 +44,25 @@ void connect_to_wifi(const char* ssid, const char* password)
 		WiFi.begin(ssid, password);
 		vTaskDelay(5'000);
 	}
+}
+
+void create_tasks()
+{
+	xTaskCreate(
+		Camera::send_image_to_client_task,
+		"send_image_to_client",
+		STACK_SIZE,
+		&g_camera,
+		1,
+		&g_send_image_to_client_task_handle);
+
+	xTaskCreate(
+		Json::handle_json_from_client_task,
+		"handle_json_from_client",
+		STACK_SIZE,
+		&g_json,
+		1,
+		&g_handle_json_from_client_task_handle);
 }
 
 void setup()
@@ -68,33 +88,9 @@ void setup()
 	// Initialize the JSON (no tasks running yet, so no lock needed)
 	g_json.update_json();
 
-	// Create task for sending image
-	xTaskCreate(
-		Camera::send_image_to_client_task,
-		"send_image_to_client",
-		STACK_SIZE,
-		&g_camera,
-		1,
-		&g_send_image_to_client_task_handle);
-
-	xTaskCreate(
-		Json::handle_json_from_client_task,
-		"handle_json_from_client",
-		STACK_SIZE,
-		&g_json,
-		1,
-		&g_handle_json_from_client_task_handle);
+  create_tasks();
 
 	Serial.println("Setup complete!");
-}
-
-bool send_json_to_client(const WiFiClient& client)
-{
-	return false;
-}
-
-void handle_json_from_client(const WiFiClient& client)
-{
 }
 
 // Task: on a debounced button press, update the JSON, print it and send it
