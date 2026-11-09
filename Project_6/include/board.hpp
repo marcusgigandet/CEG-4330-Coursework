@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace Pins
+namespace pins
 {
     constexpr uint8_t LED{2};
     constexpr uint8_t BUTTON{12};
