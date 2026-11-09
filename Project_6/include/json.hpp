@@ -18,7 +18,7 @@ public:
 
     static void handle_json_from_client_task(void* parameter);
 
-    bool send_json_to_client(const WiFiClient& client);
+    bool send_json_to_client(WiFiClient& client);
 
 	void update_json(uint32_t press_count, uint32_t press_duration);
 

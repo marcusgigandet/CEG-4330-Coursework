@@ -37,6 +37,7 @@ void Camera::send_image_to_client_task(void* parameter)
 		{
 			camera->send_image_to_client(camera->m_camera_client);
 		}
+		
 		vTaskDelay(1);
 	}
 }

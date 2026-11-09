@@ -9,8 +9,37 @@ void Json::handle_json_from_client_task(void* parameter)
 
 	while (true)
 	{
+		if (0 == json->m_json_client.connected())
+		{
+			json->m_json_client = json->m_json_server.accept();
+		}
+
+		if (1 == json->m_json_client.connected())
+		{
+			// Try to send json if client is connected
+			if (json->send_json_to_client(json->m_json_client))
+			{
+				json->handle_json_from_client(json->m_json_client);
+			}
+		}
+
 		vTaskDelay(1);
 	}
+}
+
+bool Json::send_json_to_client(WiFiClient& client)
+{
+	String json_str;
+
+	// Send serialized json over WiFi
+	if (serializeJson(m_json, json_str) > 0)
+	{
+		client.println(json_str);
+		return true;
+	}
+
+	// An error occurred during serialization
+	return false;
 }
 
 void Json::handle_json_from_client(WiFiClient& client)
