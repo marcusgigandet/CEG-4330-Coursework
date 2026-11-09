@@ -9,7 +9,7 @@
 #include <freertos/idf_additions.h>
 
 // WiFi Settings
-const char* SSID = "your-ssid-here";
+const char* SSID	 = "your-ssid-here";
 const char* PASSWORD = "your-password-here";
 
 constexpr uint32_t CAMERA_PORT = 8000;
@@ -19,19 +19,11 @@ constexpr uint32_t BAUD_RATE = 9'600;
 
 constexpr uint32_t DEBOUNCE_MS = 30;
 
-/// Channel to use for PWM.
-/// @note LEDC channel 0 is used by the camera clock, so don't use it for the LED
-constexpr uint8_t PWM_CHANNEL = 4;
-
 constexpr uint32_t STACK_SIZE = 4096;
 
 
-Button g_button{ButtonDesc{
-	.pin			   = pins::BUTTON,
-	.debounce_delay_ms = DEBOUNCE_MS,
-}};
-Camera g_camera;
-Json g_json;
+Button* g_button;
+Camera* g_camera;
 
 /// RTOS mutex that locks the json document and g_json_client, and the task handles
 SemaphoreHandle_t g_json_mutex;
@@ -62,7 +54,7 @@ void create_tasks()
 		Camera::send_image_to_client_task,
 		"send_image_to_client",
 		STACK_SIZE,
-		&g_camera,
+		g_camera,
 		1,
 		&g_send_image_to_client_task_handle);
 
@@ -70,7 +62,7 @@ void create_tasks()
 		Json::handle_json_from_client_task,
 		"handle_json_from_client",
 		STACK_SIZE,
-		&g_json,
+		&g_button->json(),
 		1,
 		&g_handle_json_from_client_task_handle);
 
@@ -78,7 +70,7 @@ void create_tasks()
 		Button::button_task,
 		"process_button",
 		STACK_SIZE,
-		&g_button,
+		g_button,
 		1,
 		&g_button_task_handle);
 }
@@ -90,15 +82,21 @@ void setup()
 	Serial.setTimeout(10); // Timeout is needed to continue to camera processing quickly
 
 	// Set LED to off
+	// Use active low for LED for this MCU
+	// This means updating duty cycle to be reversed
 	pinMode(pins::LED, OUTPUT);
-	digitalWrite(pins::LED, LOW);
+	digitalWrite(pins::LED, HIGH);
+	ledcAttachChannel(pins::LED, 40000, PWM_RESOLUTION, PWM_CHANNEL);
+	ledcWrite(pins::LED, (1 << PWM_RESOLUTION) - 1);
 
 	// Connect to the SSID with PASSWORD
 	connect_to_wifi(SSID, PASSWORD);
 
-	g_camera = Camera(CAMERA_PORT);
-	g_json = Json(JSON_PORT);
-	g_json.update_json();
+	g_camera = new Camera(CAMERA_PORT);
+	g_button = new Button(ButtonDesc{
+		.pin = pins::BUTTON,
+		.debounce_delay_ms = DEBOUNCE_MS,
+	}, JSON_PORT);
 
 	create_tasks();
 

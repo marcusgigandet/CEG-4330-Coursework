@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include <Wifi.h>
+#include <WiFi.h>
 
 class Json
 {
@@ -11,16 +11,14 @@ class Json
 	JsonDocument m_json;
 
 	void start_json_server(int port);
+	void handle_json_from_client(WiFiClient& client);
 
 public:
-	Json() = default;
-	Json(int port) { start_json_server(port); }
+	explicit Json(int port) { start_json_server(port); }
 
     static void handle_json_from_client_task(void* parameter);
 
     bool send_json_to_client(const WiFiClient& client);
 
-    void handle_json_from_client(const WiFiClient& client);
-
-	void update_json();
+	void update_json(uint32_t press_count, uint32_t press_duration);
 };
