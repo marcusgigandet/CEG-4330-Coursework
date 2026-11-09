@@ -2,5 +2,5 @@
 
 #pragma once
 
-const char* SSID = "your-ssid-here";
-const char* PASSWORD = "your-password-here";
+constexpr char* SSID = "your-ssid-here";
+constexpr char* PASSWORD = "your-password-here";

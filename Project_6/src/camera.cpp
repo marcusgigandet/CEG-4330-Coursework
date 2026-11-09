@@ -1,8 +1,8 @@
 #include "camera.hpp"
-#include <esp_camera.h>
-#include <freertos/idf_additions.h>
 #include <ArduinoJson.h>
 #include <WiFi.h>
+#include <esp_camera.h>
+#include <freertos/idf_additions.h>
 
 // Camera Settings
 #define PWDN_GPIO_NUM -1
@@ -28,14 +28,14 @@ void Camera::send_image_to_client_task(void* parameter)
 
 	while (true)
 	{
-		if (0 == camera->m_camera_client.connected())
+		if (!camera->m_camera_client.connected())
 		{
 			camera->m_camera_client = camera->m_camera_server.accept();
 		}
 
-		if (1 == camera->m_camera_client.connected())
+		if (camera->m_camera_client.connected())
 		{
-			camera->send_image_to_client(camera->m_camera_client);
+			camera->send_image_to_client();
 		}
 
 		vTaskDelay(1);
@@ -93,7 +93,7 @@ void Camera::start_server(int port)
 	Serial.println("Camera server started on port " + String(port));
 }
 
-bool Camera::send_image_to_client(WiFiClient& client)
+bool Camera::send_image_to_client()
 {
 	// Get a pointer to the frame buffer of the camera
 	camera_fb_t* frame_buf = esp_camera_fb_get();
@@ -107,9 +107,9 @@ bool Camera::send_image_to_client(WiFiClient& client)
 
 	// Send the frame buffer (4-byte length, then the JPEG)
 	uint32_t len = frame_buf->len;
-	client.write((uint8_t*)&len, sizeof(len));
-	client.write(frame_buf->buf, frame_buf->len);
-	
+	m_camera_client.write((uint8_t*)&len, sizeof(len));
+	m_camera_client.write(frame_buf->buf, frame_buf->len);
+
 	// Tell the camera that it can reuse this frame buffer now that we've sent it off
 	esp_camera_fb_return(frame_buf);
 

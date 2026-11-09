@@ -16,7 +16,7 @@ public:
 
 	static void send_image_to_client_task(void* parameter);
 
-	bool send_image_to_client(WiFiClient& client);
+	bool send_image_to_client();
 
 	WiFiServer* server() { return &m_camera_server; }
 };

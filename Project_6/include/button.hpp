@@ -1,13 +1,12 @@
 #pragma once
 
 #include "json.hpp"
-
 #include <Arduino.h>
 
 namespace
 {
-	#define DEFAULT_DEBOUNCE_DELAY 30
-}
+	constexpr uint32_t DEFAULT_DEBOUNCE_DELAY = 30;
+} // namespace
 
 struct ButtonDesc
 {
@@ -17,8 +16,13 @@ struct ButtonDesc
 
 class Button
 {
-	Json m_json;
+	/// Shared Json object, which must outlive the button.
+	Json& m_json;
+
+	/// Button pin.
 	uint8_t m_pin;
+
+	/// Delay between debounced states.
 	uint32_t m_debounce_delay_ms;
 
 	/// Raw, current state of the button
@@ -43,11 +47,10 @@ class Button
 	/// @brief Handles the button presses for the standalone button.
 	///
 	/// This handles any debouncing before confirming the button press.
-	/// This also logs the button press duration (press after debouncing to release) to serial comm.
 	void process();
 
 public:
-	Button(const ButtonDesc& desc, const Json& json) :
+	Button(const ButtonDesc& desc, Json& json) :
 		m_json(json), m_pin(desc.pin), m_debounce_delay_ms(desc.debounce_delay_ms)
 	{
 		// Configure pin
@@ -55,6 +58,7 @@ public:
 		m_json.update_json(m_press_count, m_press_duration);
 	}
 
+	/// @brief RTOS task for processing button logic.
 	static void button_task(void* parameter);
 
 	Json& json() { return m_json; }

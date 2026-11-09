@@ -15,11 +15,22 @@ class Json
 	void handle_json_from_client();
 
 public:
-	explicit Json(const SemaphoreHandle_t& mutex, int port) : m_mutex(mutex) { start_json_server(port); }
+	/// @brief Constructs a new json object.
+	///
+	/// @param mutex Semaphore guarding json access.
+	/// @param port Port to use for WiFi.
+	explicit Json(const SemaphoreHandle_t& mutex, int port) : m_mutex(mutex)
+	{
+		start_json_server(port);
+	}
 
-    static void handle_json_from_client_task(void* parameter);
+	// The server socket must have a single owner.
+	Json(const Json&) = delete;
+	Json& operator=(const Json&) = delete;
 
-    bool send_json_to_client();
+	static void handle_json_from_client_task(void* parameter);
+
+	bool send_json_to_client();
 
 	void update_json(uint32_t press_count, uint32_t press_duration);
 

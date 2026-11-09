@@ -1,13 +1,16 @@
 #include "button.hpp"
 #include "board.hpp"
-#include "freertos/idf_additions.h"
 #include <Arduino.h>
+#include <freertos/idf_additions.h>
 
 void Button::button_task(void* parameter)
 {
 	auto* button = static_cast<Button*>(parameter);
 	uint8_t last_debounced_state;
 	uint8_t current_debounced_state;
+
+	// Initialize json
+	button->json().update_json(button->press_count(), button->press_duration());
 
 	while (true)
 	{
@@ -20,21 +23,32 @@ void Button::button_task(void* parameter)
 		current_debounced_state = button->m_debounced_state;
 
 		// Check if button is just pressed
-		if ((last_debounced_state != current_debounced_state) && (last_debounced_state == HIGH))
+		if (last_debounced_state != current_debounced_state)
 		{
-			auto& mutex = button->json().mutex();
-			xSemaphoreTake(mutex, portMAX_DELAY);
-			{ // Semaphore critical section
-				// Update json entries
-				button->json().update_json(button->press_count(), button->press_duration());
+			if (last_debounced_state == HIGH) // Press
+			{
 
-				// Log to serial
-				Serial.println(button->json().to_string());
+				auto& mutex = button->json().mutex();
+				xSemaphoreTake(mutex, portMAX_DELAY);
+				{ // Semaphore critical section
+					// Update json entries
+					button->json().update_json(button->press_count(), button->press_duration());
 
-				// Log to Python if connected
-				button->json().send_json_to_client();
+					// Log to Python if connected
+					button->json().send_json_to_client();
+				}
+				xSemaphoreGive(mutex);
 			}
-			xSemaphoreGive(mutex);
+			else // Release
+			{
+				auto& mutex = button->json().mutex();
+				xSemaphoreTake(mutex, portMAX_DELAY);
+				{ // Critical section
+					// Log to serial
+					Serial.println(button->json().to_string());
+				}
+				xSemaphoreGive(mutex);
+			}
 		}
 
 		last_debounced_state = current_debounced_state;
@@ -69,15 +83,9 @@ void Button::process()
 			m_press_start_time = CURRENT_TIME;
 			++m_press_count;
 		}
-	}
-
-	// Update press duration
-	if (m_debounced_state == LOW)
-	{
-		m_press_duration = CURRENT_TIME - m_press_start_time;
-	}
-	else
-	{
-		m_press_duration = 0;
+		else
+		{
+			m_press_duration = CURRENT_TIME - m_press_start_time;
+		}
 	}
 }

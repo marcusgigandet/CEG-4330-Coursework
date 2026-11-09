@@ -1,9 +1,8 @@
 #include "json.hpp"
 #include "board.hpp"
-#include "freertos/idf_additions.h"
-#include "portmacro.h"
-
 #include <cmath>
+#include <freertos/idf_additions.h>
+#include <portmacro.h>
 
 void Json::handle_json_from_client_task(void* parameter)
 {
@@ -11,23 +10,20 @@ void Json::handle_json_from_client_task(void* parameter)
 
 	while (true)
 	{
-		if (0 == json->m_json_client.connected())
-		{
-			xSemaphoreTake(json->mutex(), portMAX_DELAY);
-			{ // Critical section
+		xSemaphoreTake(json->mutex(), portMAX_DELAY);
+		{ // Critical section
+			if (!json->m_json_client.connected())
+			{
 				json->m_json_client = json->m_json_server.accept();
-
-				if (1 == json->m_json_client.connected())
-				{
-					// Try to send json if client is connected
-					if (json->send_json_to_client())
-					{
-						json->handle_json_from_client();
-					}
-				}
 			}
-			xSemaphoreGive(json->mutex());
+
+			if (json->m_json_client.connected())
+			{
+				// Try to send json if client is connected
+				json->handle_json_from_client();
+			}
 		}
+		xSemaphoreGive(json->mutex());
 
 		vTaskDelay(1);
 	}
@@ -50,7 +46,7 @@ bool Json::send_json_to_client()
 
 void Json::handle_json_from_client()
 {
-	if (0 == m_json_client.available())
+	if (!m_json_client.available())
 	{
 		return;
 	}
@@ -62,6 +58,7 @@ void Json::handle_json_from_client()
 	// Return if errors in deserialized json
 	if (deserializeJson(rx_json, received_data))
 	{
+		Serial.println("Error deserializing JSON");
 		return;
 	}
 
@@ -70,14 +67,15 @@ void Json::handle_json_from_client()
 	const JsonVariantConst DUTY_CYCLE = rx_json["dutyCycle"];
 	if (!FREQUENCY.is<float>() || !DUTY_CYCLE.is<float>())
 	{
+		Serial.println("Invalid inputs");
 		return;
 	}
 
 	// Convert floats to unsigned ints for processing
 	const float FREQUENCY_HZ = constrain(FREQUENCY.as<float>(), MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ);
-	const float DUTY_PERCENT = constrain(DUTY_CYCLE.as<float>(), 0.0f, 100.0f);
-	const uint32_t FREQ_HZ	 = static_cast<uint32_t>(std::round(FREQUENCY_HZ));
-	const uint32_t DUTY		 = static_cast<uint32_t>(std::round(DUTY_PERCENT / 100.0f * MAX_DUTY));
+	const float DUTY_PERCENT = constrain(DUTY_CYCLE.as<float>(), 0.0F, 100.0F);
+	const auto FREQ_HZ		 = static_cast<uint32_t>(std::round(FREQUENCY_HZ));
+	const auto DUTY			 = static_cast<uint32_t>(std::round(DUTY_PERCENT / 100.0F * MAX_DUTY));
 
 	// Log json
 	Serial.printf(
@@ -104,6 +102,8 @@ void Json::start_json_server(int port)
 	// Start server
 	m_json_server = WiFiServer(port);
 	m_json_server.begin();
+
+	Serial.println("Json server started on port " + String(port));
 }
 
 void Json::update_json(uint32_t press_count, uint32_t press_duration)
