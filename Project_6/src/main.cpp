@@ -15,11 +15,13 @@ const char* PASSWORD = "your-password-here";
 constexpr uint32_t CAMERA_PORT = 8000;
 constexpr uint32_t JSON_PORT   = 8001;
 
-constexpr uint32_t BAUD_RATE = 9'600;
-constexpr uint32_t DEBOUNCE_MS = 30;
+/// Timeout is needed to continue to camera processing quickly
+constexpr uint32_t SERIAL_TIMEOUT_MS = 10;
+constexpr uint32_t BAUD_RATE		 = 9'600;
+constexpr uint32_t DEBOUNCE_MS		 = 30;
 
-constexpr uint32_t STACK_SIZE = 4096;
-constexpr uint32_t RETRY_WIFI_CONN_MS = 5'000; 
+constexpr uint32_t STACK_SIZE		  = 4096;
+constexpr uint32_t RETRY_WIFI_CONN_MS = 5'000;
 
 
 Button* g_button;
@@ -37,7 +39,7 @@ void create_tasks();
 
 void connect_to_wifi(const char* ssid, const char* password)
 {
-	uint32_t start_time_ms   = millis();
+	uint32_t start_time_ms	 = millis();
 	uint32_t current_time_ms = millis();
 
 	WiFi.begin(ssid, password);
@@ -89,7 +91,7 @@ void setup()
 {
 	// Initialize serial communications
 	Serial.begin(BAUD_RATE);
-	Serial.setTimeout(10); // Timeout is needed to continue to camera processing quickly
+	Serial.setTimeout(SERIAL_TIMEOUT_MS);
 
 	// Set LED to off
 	// Use active low for LED for this MCU
@@ -102,11 +104,20 @@ void setup()
 	// Connect to the SSID with PASSWORD
 	connect_to_wifi(SSID, PASSWORD);
 
-	g_camera = new Camera(CAMERA_PORT);
-	g_button = new Button(ButtonDesc{
-		.pin = pins::BUTTON,
-		.debounce_delay_ms = DEBOUNCE_MS,
-	}, JSON_PORT);
+	g_json_mutex = xSemaphoreCreateMutex();
+	Json json{
+		g_json_mutex,
+		JSON_PORT,
+	};
+
+	g_camera = new Camera{CAMERA_PORT};
+	g_button = new Button{
+		ButtonDesc{
+			.pin			   = pins::BUTTON,
+			.debounce_delay_ms = DEBOUNCE_MS,
+		},
+		json,
+	};
 
 	create_tasks();
 

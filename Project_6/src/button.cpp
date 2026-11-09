@@ -22,14 +22,19 @@ void Button::button_task(void* parameter)
 		// Check if button is just pressed
 		if ((last_debounced_state != current_debounced_state) && (last_debounced_state == HIGH))
 		{
-			// Update json entries
-			button->json().update_json(button->press_count(), button->press_duration());
+			auto& mutex = button->json().mutex();
+			xSemaphoreTake(mutex, portMAX_DELAY);
+			{ // Semaphore critical section
+				// Update json entries
+				button->json().update_json(button->press_count(), button->press_duration());
 
-			// Log to serial
-			Serial.println(button->json().to_string());
+				// Log to serial
+				Serial.println(button->json().to_string());
 
-			// Log to Python if connected
-			button->json().send_json_to_client();
+				// Log to Python if connected
+				button->json().send_json_to_client();
+			}
+			xSemaphoreGive(mutex);
 		}
 
 		last_debounced_state = current_debounced_state;

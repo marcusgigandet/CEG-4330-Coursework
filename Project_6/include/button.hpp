@@ -47,8 +47,8 @@ class Button
 	void process();
 
 public:
-	Button(const ButtonDesc& desc, int json_port) :
-		m_json(json_port), m_pin(desc.pin), m_debounce_delay_ms(desc.debounce_delay_ms)
+	Button(const ButtonDesc& desc, Json& json) :
+		m_json(json), m_pin(desc.pin), m_debounce_delay_ms(desc.debounce_delay_ms)
 	{
 		// Configure pin
 		pinMode(m_pin, INPUT_PULLUP);
