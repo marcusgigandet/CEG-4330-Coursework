@@ -15,7 +15,7 @@ class Json
 	void handle_json_from_client();
 
 public:
-	explicit Json(SemaphoreHandle_t& mutex, int port) : m_mutex(mutex) { start_json_server(port); }
+	explicit Json(const SemaphoreHandle_t& mutex, int port) : m_mutex(mutex) { start_json_server(port); }
 
     static void handle_json_from_client_task(void* parameter);
 

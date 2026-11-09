@@ -2,15 +2,12 @@
 #include "button.hpp"
 #include "camera.hpp"
 #include "json.hpp"
+#include "secrets.hpp"
 
 #include <ArduinoJson.h>
 #include <WiFi.h>
 #include <esp_camera.h>
 #include <freertos/idf_additions.h>
-
-// WiFi Settings
-const char* SSID	 = "your-ssid-here";
-const char* PASSWORD = "your-password-here";
 
 constexpr uint32_t CAMERA_PORT = 8000;
 constexpr uint32_t JSON_PORT   = 8001;
@@ -26,9 +23,6 @@ constexpr uint32_t RETRY_WIFI_CONN_MS = 5'000;
 
 Button* g_button;
 Camera* g_camera;
-
-/// RTOS mutex that locks the json document and g_json_client, and the task handles
-SemaphoreHandle_t g_json_mutex;
 
 TaskHandle_t g_send_image_to_client_task_handle;
 TaskHandle_t g_handle_json_from_client_task_handle;
@@ -104,9 +98,8 @@ void setup()
 	// Connect to the SSID with PASSWORD
 	connect_to_wifi(SSID, PASSWORD);
 
-	g_json_mutex = xSemaphoreCreateMutex();
 	Json json{
-		g_json_mutex,
+		xSemaphoreCreateMutex(),
 		JSON_PORT,
 	};
 
