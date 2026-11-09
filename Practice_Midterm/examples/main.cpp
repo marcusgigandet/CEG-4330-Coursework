@@ -1,21 +1,17 @@
 // Problem:
 // Write an ESP32 program using the Arduino libraries to do the following:
-
+//
 // Use a GPIO pin and interrupt to measure the speed and total number of products passing over a
 // conveyor belt. Assume that there is a laser sensor that the products intersect with as they move
 // along the conveyor belt. The laser is active high, outputting a high voltage when a product
 // intersects the laser beam.
-
-
+//
 // You must print two quantities to the serial monitor, only if they change:
+//
+// - The total number of products that have passed by the laser
+// - The frequency that the products are moving on the conveyor belt
 
-// The total number of products that have passed by the laser
-// The frequency that the products are moving on the conveyor belt
-
-#include "esp32-hal-gpio.h"
-#include "esp32-hal.h"
 #include <Arduino.h>
-#include <cstdint>
 
 struct BeltState
 {

@@ -1,4 +1,3 @@
-# Base style
 BasedOnStyle: LLVM
 Language: Cpp
 Standard: Latest
@@ -34,7 +33,6 @@ BraceWrapping:
 
 Cpp11BracedListStyle: true
 
-# Short constructs — always expanded
 AllowShortEnumsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: InlineOnly
 AllowShortIfStatementsOnASingleLine: Never
@@ -42,9 +40,8 @@ AllowShortLoopsOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false
 AllowAllParametersOfDeclarationOnNextLine: false
 AllowAllArgumentsOnNextLine: false
-BreakTemplateDeclarations: Yes
+AlwaysBreakTemplateDeclarations: Yes
 BinPackArguments: false
-BinPackParameters: BinPack
 AlignAfterOpenBracket: AlwaysBreak
 
 # Constructor initializer lists
@@ -57,7 +54,7 @@ ContinuationIndentWidth: 4
 
 AlignTrailingComments:
   Kind: Always
-  OverEmptyLines: 2
+  OverEmptyLines: 0
 
 # Alignment for consecutive assignments/declarations
 AlignConsecutiveAssignments:
@@ -66,9 +63,7 @@ AlignConsecutiveAssignments:
   AcrossComments: false
 
 AlignConsecutiveDeclarations:
-  Enabled: true
-  AcrossEmptyLines: false
-  AcrossComments: false
+  Enabled: false
 
 # Other settings
 PointerAlignment: Left

@@ -19,23 +19,26 @@
 constexpr uint8_t RAINGAUGE_PIN = 4; // reed switch pulse input
 constexpr double  MM_PER_TIP	= 0.2;
 
-// Written only by the ISR
-volatile uint32_t tipCount	= 0;	 // total tips since boot
-volatile uint32_t lastTipMs = 0;	 // timestamp of most recent tip
-volatile uint32_t prevTipMs = 0;	 // timestamp of the tip before it
-volatile bool	  haveTwo	= false; // true once two tips have been seen
+// ISR
+volatile uint32_t tipCount	= 0;
+volatile uint32_t lastTipMs = 0;
+volatile uint32_t prevTipMs = 0;
+volatile bool	  haveTwo	= false;
 
 void IRAM_ATTR tipIsr()
 {
 	uint32_t now = millis();
+	
 	if (tipCount > 0)
 	{
 		prevTipMs = lastTipMs;
 	}
+	
 	if (tipCount >= 1)
 	{
 		haveTwo = true;
 	}
+
 	lastTipMs = now;
 	tipCount++;
 }
@@ -45,8 +48,11 @@ double	 lastPrintedRate  = -1.0;
 
 void setup()
 {
+	// Serial
 	Serial.begin(115200);
-	pinMode(RAINGAUGE_PIN, INPUT_PULLDOWN); // active-high pulse
+
+	// Pin
+	pinMode(RAINGAUGE_PIN, INPUT_PULLDOWN);
 	attachInterrupt(digitalPinToInterrupt(RAINGAUGE_PIN), tipIsr, RISING);
 }
 
@@ -60,7 +66,6 @@ void loop()
 	bool	 two   = haveTwo;
 	interrupts();
 
-	// ---- Total rainfall: print only on change ----
 	if (count != lastPrintedCount)
 	{
 		double totalMM = count * MM_PER_TIP;
@@ -70,11 +75,9 @@ void loop()
 		lastPrintedCount = count;
 	}
 
-	// ---- Rainfall rate from the interval between the last two tips ----
-	// rate = (0.2 mm / interval) scaled to mm/h
 	if (two && count != lastPrintedCount)
 	{
-		uint32_t interval = tLast - tPrev; // millis, wraps safely
+		uint32_t interval = tLast - tPrev;
 		if (interval > 0)
 		{
 			double rateMMh = MM_PER_TIP * 3600000.0 / interval;
