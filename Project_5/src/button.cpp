@@ -30,7 +30,7 @@ void handleButtonPress()
 		// Update the state of the debounced press
 		buttonData.debouncedState = buttonData.rawState;
 
-		// Rising edge: button pressed
+		// Falling edge: button pressed
 		if (rawButtonState == LOW)
 		{
 			buttonData.pressStartTime = currentTime;
@@ -38,9 +38,14 @@ void handleButtonPress()
 		}
 	}
 
-    // Update press duration
-    if (buttonData.debouncedState == LOW)
-    {
-        buttonData.pressTime = currentTime - buttonData.pressStartTime;
-    }
+	// Update press duration
+	if (buttonData.debouncedState == LOW)
+	{
+		buttonData.pressTime = currentTime - buttonData.pressStartTime;
+	}
+	// Button is not pressed
+	else
+	{
+		buttonData.pressTime = 0;
+	}
 }

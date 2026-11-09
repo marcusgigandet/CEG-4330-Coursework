@@ -62,6 +62,7 @@ void connectToWiFi(const char* ssid, const char* password)
 		// Retry every 5 seconds if it fails to connect
 		if (currentTimeMS - startTimeMS > 5'000)
 		{
+			// Ensure WiFi is disconnected before attempting to reconnect
 			WiFi.disconnect();
 			Serial.println("Failed to establish WiFi connection, retrying...");
 			WiFi.begin(ssid, password);
@@ -224,7 +225,6 @@ bool sendImageToClient(WiFiClient client)
 
 	// Send the frame buffer (4-byte length, then the JPEG)
 	uint32_t len = fb->len;
-	client.write((uint8_t*)&len, sizeof(len));
 	client.write(fb->buf, fb->len);
 
 	// Tell the camera that it can reuse this frame buffer now that we've sent it off
