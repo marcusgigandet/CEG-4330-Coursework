@@ -17,9 +17,9 @@ void Json::handle_json_from_client_task(void* parameter)
 		if (1 == json->m_json_client.connected())
 		{
 			// Try to send json if client is connected
-			if (json->send_json_to_client(json->m_json_client))
+			if (json->send_json_to_client())
 			{
-				json->handle_json_from_client(json->m_json_client);
+				json->handle_json_from_client();
 			}
 		}
 
@@ -27,14 +27,14 @@ void Json::handle_json_from_client_task(void* parameter)
 	}
 }
 
-bool Json::send_json_to_client(WiFiClient& client)
+bool Json::send_json_to_client()
 {
 	String json_str;
 
 	// Send serialized json over WiFi
 	if (serializeJson(m_json, json_str) > 0)
 	{
-		client.println(json_str);
+		m_json_client.println(json_str);
 		return true;
 	}
 
@@ -42,14 +42,14 @@ bool Json::send_json_to_client(WiFiClient& client)
 	return false;
 }
 
-void Json::handle_json_from_client(WiFiClient& client)
+void Json::handle_json_from_client()
 {
-	if (0 == client.available())
+	if (0 == m_json_client.available())
 	{
 		return;
 	}
 
-	String received_data = client.readStringUntil('\n');
+	String received_data = m_json_client.readStringUntil('\n');
 	received_data.trim();
 	JsonDocument rx_json;
 
@@ -60,28 +60,28 @@ void Json::handle_json_from_client(WiFiClient& client)
 	}
 
 	// Return if invalid duty cycle or frequency
-	const JsonVariantConst frequency = rx_json["frequency"];
-	const JsonVariantConst duty_cycle = rx_json["dutyCycle"];
-	if (!frequency.is<float>() || !duty_cycle.is<float>())
+	const JsonVariantConst FREQUENCY = rx_json["frequency"];
+	const JsonVariantConst DUTY_CYCLE = rx_json["dutyCycle"];
+	if (!FREQUENCY.is<float>() || !DUTY_CYCLE.is<float>())
 	{
 		return;
 	}
 
 	// Convert floats to unsigned ints for processing
-	const float frequency_hz = constrain(frequency.as<float>(), MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ);
-	const float duty_percent = constrain(duty_cycle.as<float>(), 0.0f, 100.0f);
-	const uint32_t freq_hz = static_cast<uint32_t>(std::round(frequency_hz));
-	const uint32_t duty = static_cast<uint32_t>(std::round(duty_percent / 100.0f * MAX_DUTY));
+	const float FREQUENCY_HZ = constrain(FREQUENCY.as<float>(), MIN_FREQUENCY_HZ, MAX_FREQUENCY_HZ);
+	const float DUTY_PERCENT = constrain(DUTY_CYCLE.as<float>(), 0.0f, 100.0f);
+	const uint32_t FREQ_HZ = static_cast<uint32_t>(std::round(FREQUENCY_HZ));
+	const uint32_t DUTY = static_cast<uint32_t>(std::round(DUTY_PERCENT / 100.0f * MAX_DUTY));
 
 	// Log json
-	Serial.printf("Processed Json %u, %u\n", static_cast<unsigned>(freq_hz), static_cast<unsigned>(duty));
+	Serial.printf("Processed Json %u, %u\n", static_cast<unsigned>(FREQ_HZ), static_cast<unsigned>(DUTY));
 
 	// Update frequency
-	ledcChangeFrequency(pins::LED, freq_hz, PWM_RESOLUTION);
+	ledcChangeFrequency(pins::LED, FREQ_HZ, PWM_RESOLUTION);
 
 	// Update PWM
 	// The LED is active low, so invert the PWM duty
-	ledcWrite(pins::LED, MAX_DUTY - duty);
+	ledcWrite(pins::LED, MAX_DUTY - DUTY);
 }
 
 void Json::start_json_server(int port)

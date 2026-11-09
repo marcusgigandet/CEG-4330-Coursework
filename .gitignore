@@ -50,3 +50,5 @@ vcpkg_installed/
 .pio
 .cache
 .dummy
+
+compile_commands.json

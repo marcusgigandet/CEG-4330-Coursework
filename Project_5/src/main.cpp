@@ -224,8 +224,9 @@ bool sendImageToClient(WiFiClient client)
 	}
 
 	// Send the frame buffer (4-byte length, then the JPEG)
-	uint32_t len = fb->len;
-	client.write(fb->buf, fb->len);
+	uint32_t len = frame_buf->len;
+	client.write((uint8_t*)&len, sizeof(len));
+	client.write(frame_buf->buf, frame_buf->len);
 
 	// Tell the camera that it can reuse this frame buffer now that we've sent it off
 	esp_camera_fb_return(fb);

@@ -23,12 +23,13 @@ void Button::button_task(void* parameter)
 		if ((last_debounced_state != current_debounced_state) && (last_debounced_state == HIGH))
 		{
 			// Update json entries
-			button->m_json.update_json(button->press_count(), button->press_duration());
+			button->json().update_json(button->press_count(), button->press_duration());
 
 			// Log to serial
-			Serial.println(button->m_json.to_string());
+			Serial.println(button->json().to_string());
 
 			// Log to Python if connected
+			button->json().send_json_to_client();
 		}
 
 		last_debounced_state = current_debounced_state;
